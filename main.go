@@ -1,53 +1,33 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"log"
-	"os"
-	"strings"
+
+	"github.com/ddahon/workfromearth/internal/scraping"
+	"github.com/ddahon/workfromearth/internal/storage"
 )
-
-type AtsKind int16
-
-const (
-	Unknown AtsKind = iota
-	Ashby
-)
-
-type Source struct {
-	Url string
-	Ats AtsKind
-}
 
 func main() {
-	sources := readSources("./source_urls")
-	fmt.Println(sources)
-	// TODO: for ashby, get endpoint https://developers.ashbyhq.com/docs/public-job-posting-api
-}
-
-func readSources(path string) []Source {
-	f, err := os.Open(path)
+	db, err := storage.NewDB("./db.sqlite")
 	if err != nil {
-		log.Fatalf("opening file %v: %v", path, err)
+		log.Fatalf("opening db %v: ", err)
 	}
-	s := bufio.NewScanner(f)
-	var res []Source
-	for s.Scan() {
-		l := s.Text()
-		source := Source{
-			Url: l,
-			Ats: parseAtsFromUrl(l),
+	defer db.Close()
+	repo := storage.NewRepository(db)
+	sources := scraping.ReadSources("./source_urls")
+	fmt.Println(sources)
+	for _, src := range sources {
+		jobs, err := src.Scrape()
+		if err != nil {
+			log.Println(err)
+			continue
 		}
-		res = append(res, source)
+		err = repo.SaveJobs(jobs, src.Company())
+		if err != nil {
+			log.Printf("saving %v jobs: %v\n", len(jobs), err)
+			continue
+		}
+		log.Printf("saved %v jobs", len(jobs))
 	}
-
-	return res
-}
-
-func parseAtsFromUrl(url string) AtsKind {
-	if strings.Contains(url, "ashbyhq") {
-		return Ashby
-	}
-	return Unknown
 }
