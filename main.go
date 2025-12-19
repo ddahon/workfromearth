@@ -35,7 +35,7 @@ func main() {
 			continue
 		}
 
-		err = repo.SaveJobs(jobs, scraper.Company())
+		err = repo.SaveJobs(jobs, company.ID)
 		if err != nil {
 			log.Printf("saving %v jobs for %s: %v\n", len(jobs), company.Name, err)
 			continue

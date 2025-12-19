@@ -1,8 +1,7 @@
 package scraping
 
 type GreenhouseScraper struct {
-	CompanyName string
-	Url         string
+	Url string
 }
 
 type GreenhouseResponse struct {
@@ -22,15 +21,10 @@ type Location struct {
 	Name string `json:"name"`
 }
 
-func NewGreenhouseScraper(companyName, atsURL string) GreenhouseScraper {
+func NewGreenhouseScraper(atsURL string) GreenhouseScraper {
 	return GreenhouseScraper{
-		CompanyName: companyName,
-		Url:         atsURL,
+		Url: atsURL,
 	}
-}
-
-func (s GreenhouseScraper) Company() string {
-	return s.CompanyName
 }
 
 func (s GreenhouseScraper) Scrape() ([]Job, error) {

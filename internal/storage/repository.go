@@ -16,15 +16,16 @@ func NewRepository(db *DB) *Repository {
 	return &Repository{db: db}
 }
 
-func (r *Repository) SaveJob(job scraping.Job, company string) error {
+func (r *Repository) SaveJob(job scraping.Job, companyID string) error {
 	query := `
-		INSERT INTO jobs (id, title, company, description, job_url, salary_range, published_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, datetime('now'))
+		INSERT INTO jobs (id, title, company, company_id, description, job_url, salary_range, published_at, updated_at)
+		VALUES ($1, $2, (SELECT name FROM companies WHERE id = $3), $3, $4, $5, $6, $7, datetime('now'))
 		ON CONFLICT (job_url) DO UPDATE SET
 			title = EXCLUDED.title,
 			description = EXCLUDED.description,
 			salary_range = EXCLUDED.salary_range,
 			published_at = EXCLUDED.published_at,
+			company_id = EXCLUDED.company_id,
 			updated_at = datetime('now')
 	`
 
@@ -33,7 +34,7 @@ func (r *Repository) SaveJob(job scraping.Job, company string) error {
 		query,
 		id,
 		job.Title,
-		company,
+		companyID,
 		job.Description,
 		job.Url,
 		job.SalaryRange,
@@ -46,7 +47,7 @@ func (r *Repository) SaveJob(job scraping.Job, company string) error {
 	return nil
 }
 
-func (r *Repository) SaveJobs(jobs []scraping.Job, company string) error {
+func (r *Repository) SaveJobs(jobs []scraping.Job, companyID string) error {
 	tx, err := r.db.Begin()
 	if err != nil {
 		return fmt.Errorf("starting transaction: %w", err)
@@ -54,13 +55,14 @@ func (r *Repository) SaveJobs(jobs []scraping.Job, company string) error {
 	defer tx.Rollback()
 
 	stmt, err := tx.Prepare(`
-		INSERT INTO jobs (id, title, company, description, job_url, salary_range, published_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, datetime('now'))
+		INSERT INTO jobs (id, title, company, company_id, description, job_url, salary_range, published_at, updated_at)
+		VALUES ($1, $2, (SELECT name FROM companies WHERE id = $3), $3, $4, $5, $6, $7, datetime('now'))
 		ON CONFLICT (job_url) DO UPDATE SET
 			title = EXCLUDED.title,
 			description = EXCLUDED.description,
 			salary_range = EXCLUDED.salary_range,
 			published_at = EXCLUDED.published_at,
+			company_id = EXCLUDED.company_id,
 			updated_at = datetime('now')
 	`)
 	if err != nil {
@@ -70,7 +72,7 @@ func (r *Repository) SaveJobs(jobs []scraping.Job, company string) error {
 
 	for _, job := range jobs {
 		id := uuid.New().String()
-		if _, err := stmt.Exec(id, job.Title, company, job.Description, job.Url, job.SalaryRange, job.PublishedAt); err != nil {
+		if _, err := stmt.Exec(id, job.Title, companyID, job.Description, job.Url, job.SalaryRange, job.PublishedAt); err != nil {
 			return fmt.Errorf("executing statement: %w", err)
 		}
 	}

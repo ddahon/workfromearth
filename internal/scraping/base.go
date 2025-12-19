@@ -6,16 +6,11 @@ import (
 
 type Scraper interface {
 	Scrape() ([]Job, error)
-	Company() string
 }
 
 type UnknownScraper struct {
 	CompanyName string
 	Url         string
-}
-
-func (s UnknownScraper) Company() string {
-	return s.CompanyName
 }
 
 func (s UnknownScraper) Scrape() ([]Job, error) {
@@ -25,13 +20,12 @@ func (s UnknownScraper) Scrape() ([]Job, error) {
 func CompanyToScraper(company Company) (Scraper, error) {
 	switch company.ATSType {
 	case "ashby":
-		return NewAshbyScraper(company.Name, company.ATSUrl), nil
+		return NewAshbyScraper(company.ATSUrl), nil
 	case "greenhouse":
-		return NewGreenhouseScraper(company.Name, company.ATSUrl), nil
+		return NewGreenhouseScraper(company.ATSUrl), nil
 	case "unknown", "":
 		return UnknownScraper{
-			CompanyName: company.Name,
-			Url:         company.ATSUrl,
+			Url: company.ATSUrl,
 		}, nil
 	default:
 		return nil, fmt.Errorf("unknown ATS type: %s", company.ATSType)

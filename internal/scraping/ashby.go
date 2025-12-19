@@ -1,8 +1,7 @@
 package scraping
 
 type AshbyScraper struct {
-	CompanyName string
-	Url         string
+	Url string
 }
 
 type AshbyResponse struct {
@@ -25,15 +24,10 @@ type AshbyCompensation struct {
 	ScrapeableCompensationSalarySummary string `json:"scrapeableCompensationSalarySummary"`
 }
 
-func NewAshbyScraper(companyName, atsURL string) AshbyScraper {
+func NewAshbyScraper(atsURL string) AshbyScraper {
 	return AshbyScraper{
-		CompanyName: companyName,
-		Url:         atsURL,
+		Url: atsURL,
 	}
-}
-
-func (s AshbyScraper) Company() string {
-	return s.CompanyName
 }
 
 func (s AshbyScraper) Scrape() ([]Job, error) {
