@@ -1,10 +1,5 @@
 package scraping
 
-import (
-	"fmt"
-	"regexp"
-)
-
 type AshbyScraper struct {
 	CompanyName string
 	Url         string
@@ -30,16 +25,20 @@ type AshbyCompensation struct {
 	ScrapeableCompensationSalarySummary string `json:"scrapeableCompensationSalarySummary"`
 }
 
+func NewAshbyScraper(companyName, atsURL string) AshbyScraper {
+	return AshbyScraper{
+		CompanyName: companyName,
+		Url:         atsURL,
+	}
+}
+
 func (s AshbyScraper) Company() string {
 	return s.CompanyName
 }
 
 func (s AshbyScraper) Scrape() ([]Job, error) {
-	// https://developers.ashbyhq.com/docs/public-job-posting-api
-	endpoint := "https://api.ashbyhq.com/posting-api/job-board/" + s.CompanyName + "?includeCompensation=true"
-
 	var ashbyResp AshbyResponse
-	if err := FetchJSON(endpoint, &ashbyResp); err != nil {
+	if err := FetchJSON(s.Url, &ashbyResp); err != nil {
 		return nil, err
 	}
 
@@ -61,20 +60,4 @@ func (s AshbyScraper) Scrape() ([]Job, error) {
 
 	LogScrapeResult(s.Url, len(jobs))
 	return jobs, nil
-}
-
-func parseAshbySource(url string) (Scraper, error) {
-	re, err := regexp.Compile("jobs.ashbyhq.com/([^/]+)")
-	if err != nil {
-		return nil, fmt.Errorf("compiling regexp for ashby: %v", err)
-	}
-	matches := re.FindStringSubmatch(url)
-	if len(matches) < 2 {
-		return nil, fmt.Errorf("cannot extract company from ashby URL: %v", url)
-	}
-	company := matches[1]
-	return AshbyScraper{
-		CompanyName: company,
-		Url:         url,
-	}, nil
 }

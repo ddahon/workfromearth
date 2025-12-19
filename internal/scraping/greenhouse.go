@@ -1,10 +1,5 @@
 package scraping
 
-import (
-	"fmt"
-	"regexp"
-)
-
 type GreenhouseScraper struct {
 	CompanyName string
 	Url         string
@@ -27,16 +22,21 @@ type Location struct {
 	Name string `json:"name"`
 }
 
+func NewGreenhouseScraper(companyName, atsURL string) GreenhouseScraper {
+	return GreenhouseScraper{
+		CompanyName: companyName,
+		Url:         atsURL,
+	}
+}
+
 func (s GreenhouseScraper) Company() string {
 	return s.CompanyName
 }
 
 func (s GreenhouseScraper) Scrape() ([]Job, error) {
-	// https://boards-api.greenhouse.io/v1/boards/{company}/jobs
-	endpoint := "https://boards-api.greenhouse.io/v1/boards/" + s.CompanyName + "/jobs"
-
+	// ats_url should contain the full JSON API endpoint
 	var greenhouseResp GreenhouseResponse
-	if err := FetchJSON(endpoint, &greenhouseResp); err != nil {
+	if err := FetchJSON(s.Url, &greenhouseResp); err != nil {
 		return nil, err
 	}
 
@@ -54,20 +54,4 @@ func (s GreenhouseScraper) Scrape() ([]Job, error) {
 
 	LogScrapeResult(s.Url, len(jobs))
 	return jobs, nil
-}
-
-func parseGreenhouseSource(url string) (Scraper, error) {
-	re, err := regexp.Compile(`(?:boards|job-boards)\.greenhouse\.io/([^/]+)`)
-	if err != nil {
-		return nil, fmt.Errorf("compiling regexp for greenhouse: %v", err)
-	}
-	matches := re.FindStringSubmatch(url)
-	if len(matches) < 2 {
-		return nil, fmt.Errorf("cannot extract company from greenhouse URL: %v", url)
-	}
-	company := matches[1]
-	return GreenhouseScraper{
-		CompanyName: company,
-		Url:         url,
-	}, nil
 }
