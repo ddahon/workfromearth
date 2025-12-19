@@ -3,8 +3,9 @@ package storage
 import (
 	"fmt"
 
-	"github.com/ddahon/workfromearth/internal/scraping"
 	"github.com/google/uuid"
+
+	"github.com/ddahon/workfromearth/internal/scraping"
 )
 
 type Repository struct {
@@ -17,17 +18,27 @@ func NewRepository(db *DB) *Repository {
 
 func (r *Repository) SaveJob(job scraping.Job, company string) error {
 	query := `
-		INSERT INTO jobs (id, title, company, description, job_url, salary_range, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, datetime('now'))
+		INSERT INTO jobs (id, title, company, description, job_url, salary_range, published_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, datetime('now'))
 		ON CONFLICT (job_url) DO UPDATE SET
 			title = EXCLUDED.title,
 			description = EXCLUDED.description,
 			salary_range = EXCLUDED.salary_range,
+			published_at = EXCLUDED.published_at,
 			updated_at = datetime('now')
 	`
 
 	id := uuid.New().String()
-	_, err := r.db.Exec(query, id, job.Title, company, job.Description, job.Url, job.SalaryRange)
+	_, err := r.db.Exec(
+		query,
+		id,
+		job.Title,
+		company,
+		job.Description,
+		job.Url,
+		job.SalaryRange,
+		job.PublishedAt,
+	)
 	if err != nil {
 		return fmt.Errorf("saving job: %w", err)
 	}
@@ -43,12 +54,13 @@ func (r *Repository) SaveJobs(jobs []scraping.Job, company string) error {
 	defer tx.Rollback()
 
 	stmt, err := tx.Prepare(`
-		INSERT INTO jobs (id, title, company, description, job_url, salary_range, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, datetime('now'))
+		INSERT INTO jobs (id, title, company, description, job_url, salary_range, published_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, datetime('now'))
 		ON CONFLICT (job_url) DO UPDATE SET
 			title = EXCLUDED.title,
 			description = EXCLUDED.description,
 			salary_range = EXCLUDED.salary_range,
+			published_at = EXCLUDED.published_at,
 			updated_at = datetime('now')
 	`)
 	if err != nil {
@@ -58,7 +70,7 @@ func (r *Repository) SaveJobs(jobs []scraping.Job, company string) error {
 
 	for _, job := range jobs {
 		id := uuid.New().String()
-		if _, err := stmt.Exec(id, job.Title, company, job.Description, job.Url, job.SalaryRange); err != nil {
+		if _, err := stmt.Exec(id, job.Title, company, job.Description, job.Url, job.SalaryRange, job.PublishedAt); err != nil {
 			return fmt.Errorf("executing statement: %w", err)
 		}
 	}

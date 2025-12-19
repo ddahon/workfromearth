@@ -5,4 +5,5 @@ type Job struct {
 	Description string
 	Title       string
 	SalaryRange string
+	PublishedAt string
 }

@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     description TEXT,
     job_url TEXT NOT NULL UNIQUE,
     salary_range TEXT,
+    published_at TEXT,
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );

@@ -3,6 +3,7 @@ package scraping
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 )
 
@@ -64,9 +65,11 @@ func (source AshbySource) Scrape() ([]Job, error) {
 			Url:         ashbyJob.JobURL,
 			Description: ashbyJob.Description,
 			SalaryRange: salaryRange,
+			PublishedAt: ashbyJob.PublishedAt,
 		}
 		jobs = append(jobs, job)
 	}
 
+	log.Printf("scraped %v jobs from %v: ", len(jobs), source.Url)
 	return jobs, nil
 }

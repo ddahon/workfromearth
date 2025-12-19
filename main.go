@@ -28,6 +28,5 @@ func main() {
 			log.Printf("saving %v jobs: %v\n", len(jobs), err)
 			continue
 		}
-		log.Printf("saved %v jobs", len(jobs))
 	}
 }

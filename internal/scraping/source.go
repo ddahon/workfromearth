@@ -12,7 +12,6 @@ type UnknownSource struct {
 }
 
 func (source UnknownSource) Company() string {
-	// Extract company name from URL domain or return empty string
 	return ""
 }
 
