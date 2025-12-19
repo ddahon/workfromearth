@@ -1,53 +1,37 @@
 package scraping
 
 import (
-	"bufio"
+	"encoding/json"
 	"fmt"
 	"log"
-	"os"
-	"regexp"
-	"strings"
+	"net/http"
 )
 
-type Source interface {
-	Scrape() ([]Job, error)
-	Company() string
-}
-
-func ReadSources(path string) []Source {
-	f, err := os.Open(path)
+func FetchJSON(url string, target interface{}) error {
+	resp, err := http.Get(url)
 	if err != nil {
-		log.Fatalf("opening file %v: %v", path, err)
+		return fmt.Errorf("getting %v: %w", url, err)
 	}
-	s := bufio.NewScanner(f)
-	var res []Source
-	for s.Scan() {
-		url := s.Text()
-		source, err := parseSource(url)
-		if err != nil {
-			log.Printf("failed to parse source %v: %v\n", url, err)
-		}
-		res = append(res, source)
+	defer resp.Body.Close()
+
+	if err := ValidateResponse(resp); err != nil {
+		return err
 	}
 
-	return res
+	if err := json.NewDecoder(resp.Body).Decode(target); err != nil {
+		return fmt.Errorf("decoding JSON response: %w", err)
+	}
+
+	return nil
 }
 
-func parseSource(url string) (Source, error) {
-	if strings.Contains(url, "ashbyhq") {
-		re, err := regexp.Compile("jobs.ashbyhq.com/([^/]+)")
-		if err != nil {
-			return nil, fmt.Errorf("compiling regexp for ashby: %v", err)
-		}
-		matches := re.FindStringSubmatch(url)
-		if len(matches) < 2 {
-			return nil, fmt.Errorf("cannot extract company from ashby URL: %v", url)
-		}
-		company := matches[1]
-		return AshbySource{
-			CompanyName: company,
-			Url:         url,
-		}, nil
+func ValidateResponse(resp *http.Response) error {
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("received status %d scraping %v", resp.StatusCode, resp.Request.URL)
 	}
-	return UnknownSource{url}, nil
+	return nil
+}
+
+func LogScrapeResult(sourceURL string, jobCount int) {
+	log.Printf("scraped %v jobs from %v", jobCount, sourceURL)
 }

@@ -1,13 +1,11 @@
 package scraping
 
 import (
-	"encoding/json"
 	"fmt"
-	"log"
-	"net/http"
+	"regexp"
 )
 
-type AshbySource struct {
+type AshbyScraper struct {
 	CompanyName string
 	Url         string
 }
@@ -32,26 +30,17 @@ type AshbyCompensation struct {
 	ScrapeableCompensationSalarySummary string `json:"scrapeableCompensationSalarySummary"`
 }
 
-func (source AshbySource) Company() string {
-	return source.CompanyName
+func (s AshbyScraper) Company() string {
+	return s.CompanyName
 }
 
-func (source AshbySource) Scrape() ([]Job, error) {
+func (s AshbyScraper) Scrape() ([]Job, error) {
 	// https://developers.ashbyhq.com/docs/public-job-posting-api
-	endpoint := "https://api.ashbyhq.com/posting-api/job-board/" + source.CompanyName + "?includeCompensation=true"
-	resp, err := http.Get(endpoint)
-	if err != nil {
-		return nil, fmt.Errorf("getting %v: %v", endpoint, err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("received status %d scraping %v", resp.StatusCode, endpoint)
-	}
+	endpoint := "https://api.ashbyhq.com/posting-api/job-board/" + s.CompanyName + "?includeCompensation=true"
 
 	var ashbyResp AshbyResponse
-	if err := json.NewDecoder(resp.Body).Decode(&ashbyResp); err != nil {
-		return nil, fmt.Errorf("decoding JSON response: %v", err)
+	if err := FetchJSON(endpoint, &ashbyResp); err != nil {
+		return nil, err
 	}
 
 	jobs := make([]Job, 0, len(ashbyResp.Jobs))
@@ -70,6 +59,22 @@ func (source AshbySource) Scrape() ([]Job, error) {
 		jobs = append(jobs, job)
 	}
 
-	log.Printf("scraped %v jobs from %v: ", len(jobs), source.Url)
+	LogScrapeResult(s.Url, len(jobs))
 	return jobs, nil
+}
+
+func parseAshbySource(url string) (Scraper, error) {
+	re, err := regexp.Compile("jobs.ashbyhq.com/([^/]+)")
+	if err != nil {
+		return nil, fmt.Errorf("compiling regexp for ashby: %v", err)
+	}
+	matches := re.FindStringSubmatch(url)
+	if len(matches) < 2 {
+		return nil, fmt.Errorf("cannot extract company from ashby URL: %v", url)
+	}
+	company := matches[1]
+	return AshbyScraper{
+		CompanyName: company,
+		Url:         url,
+	}, nil
 }
