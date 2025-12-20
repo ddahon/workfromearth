@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"database/sql"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -161,4 +162,30 @@ func (r *Repository) UpdateScrapedAt(companyID string) error {
 		return fmt.Errorf("updating scraped_at: %w", err)
 	}
 	return nil
+}
+
+func (r *Repository) GetCompanyByURL(url string) (*scraping.Company, error) {
+	query := `SELECT id, name, site_url, careers_url, ats_type, ats_url, scraped_at, created_at, updated_at FROM companies WHERE careers_url = $1 OR ats_url = $1`
+	row := r.db.QueryRow(query, url)
+
+	var c scraping.Company
+	err := row.Scan(
+		&c.ID,
+		&c.Name,
+		&c.SiteURL,
+		&c.CareersURL,
+		&c.ATSType,
+		&c.ATSUrl,
+		&c.ScrapedAt,
+		&c.CreatedAt,
+		&c.UpdatedAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("no company found with URL: %s", url)
+		}
+		return nil, fmt.Errorf("scanning company: %w", err)
+	}
+
+	return &c, nil
 }

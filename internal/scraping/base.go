@@ -23,6 +23,8 @@ func CompanyToScraper(company Company) (Scraper, error) {
 		return NewAshbyScraper(company.ATSUrl), nil
 	case "greenhouse":
 		return NewGreenhouseScraper(company.ATSUrl), nil
+	case "recruitee":
+		return NewRecruiteeScraper(company.ATSUrl), nil
 	case "unknown", "":
 		return UnknownScraper{
 			Url: company.ATSUrl,
