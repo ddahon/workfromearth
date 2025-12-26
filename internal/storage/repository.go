@@ -3,6 +3,7 @@ package storage
 import (
 	"database/sql"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -188,4 +189,235 @@ func (r *Repository) GetCompanyByURL(url string) (*scraping.Company, error) {
 	}
 
 	return &c, nil
+}
+
+func (r *Repository) GetAllJobs() ([]scraping.Job, error) {
+	query := `
+		SELECT 
+			j.id, 
+			j.title, 
+			j.description, 
+			j.job_url, 
+			j.salary_range,
+			j.published_at,
+			j.created_at, 
+			j.updated_at,
+			c.id as company_id,
+			c.name as company_name,
+			c.site_url as company_site_url,
+			c.careers_url as company_careers_url,
+			c.ats_type as company_ats_type,
+			c.ats_url as company_ats_url,
+			c.scraped_at as company_scraped_at,
+			c.created_at as company_created_at,
+			c.updated_at as company_updated_at
+		FROM jobs j
+		LEFT JOIN companies c ON j.company_id = c.id
+		ORDER BY j.published_at IS NULL, j.published_at DESC, j.created_at DESC
+	`
+	rows, err := r.db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("querying jobs: %w", err)
+	}
+	defer rows.Close()
+
+	var jobs []scraping.Job
+	for rows.Next() {
+		var j scraping.Job
+		var createdAt, updatedAt sql.NullString
+		var companyID, companyName, companySiteURL, companyCareersURL, companyATSType, companyATSUrl sql.NullString
+		var companyScrapedAt, companyCreatedAt, companyUpdatedAt sql.NullString
+
+		err := rows.Scan(
+			&j.ID,
+			&j.Title,
+			&j.Description,
+			&j.Url,
+			&j.SalaryRange,
+			&j.PublishedAt,
+			&createdAt,
+			&updatedAt,
+			&companyID,
+			&companyName,
+			&companySiteURL,
+			&companyCareersURL,
+			&companyATSType,
+			&companyATSUrl,
+			&companyScrapedAt,
+			&companyCreatedAt,
+			&companyUpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("scanning job: %w", err)
+		}
+
+		if createdAt.Valid && createdAt.String != "" {
+			formats := []string{
+				"2006-01-02 15:04:05.000",
+				"2006-01-02 15:04:05",
+				time.RFC3339,
+			}
+			for _, format := range formats {
+				if t, err := time.Parse(format, createdAt.String); err == nil {
+					j.CreatedAt = t
+					break
+				}
+			}
+		}
+		if updatedAt.Valid && updatedAt.String != "" {
+			formats := []string{
+				"2006-01-02 15:04:05.000",
+				"2006-01-02 15:04:05",
+				time.RFC3339,
+			}
+			for _, format := range formats {
+				if t, err := time.Parse(format, updatedAt.String); err == nil {
+					j.UpdatedAt = t
+					break
+				}
+			}
+		}
+
+		if companyID.Valid && companyName.Valid {
+			j.Company = &scraping.Company{
+				ID:         companyID.String,
+				Name:       companyName.String,
+				SiteURL:    companySiteURL.String,
+				CareersURL: companyCareersURL.String,
+				ATSType:    companyATSType.String,
+				ATSUrl:     companyATSUrl.String,
+				ScrapedAt:  companyScrapedAt.String,
+				CreatedAt:  companyCreatedAt.String,
+				UpdatedAt:  companyUpdatedAt.String,
+			}
+		}
+
+		jobs = append(jobs, j)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterating jobs: %w", err)
+	}
+
+	return jobs, nil
+}
+
+func (r *Repository) SearchJobsByTitle(query string) ([]scraping.Job, error) {
+	baseQuery := `
+		SELECT 
+			j.id, 
+			j.title, 
+			j.description, 
+			j.job_url, 
+			j.salary_range,
+			j.published_at,
+			j.created_at, 
+			j.updated_at,
+			c.id as company_id,
+			c.name as company_name,
+			c.site_url as company_site_url,
+			c.careers_url as company_careers_url,
+			c.ats_type as company_ats_type,
+			c.ats_url as company_ats_url,
+			c.scraped_at as company_scraped_at,
+			c.created_at as company_created_at,
+			c.updated_at as company_updated_at
+		FROM jobs j
+		LEFT JOIN companies c ON j.company_id = c.id
+	`
+
+	var rows *sql.Rows
+	var err error
+
+	if query == "" {
+		rows, err = r.db.Query(baseQuery + " ORDER BY j.published_at IS NULL, j.published_at DESC, j.created_at DESC")
+	} else {
+		searchPattern := "%" + query + "%"
+		rows, err = r.db.Query(baseQuery+" WHERE LOWER(j.title) LIKE LOWER(?) ORDER BY j.published_at IS NULL, j.published_at DESC, j.created_at DESC", searchPattern)
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("querying jobs: %w", err)
+	}
+	defer rows.Close()
+
+	var jobs []scraping.Job
+	for rows.Next() {
+		var j scraping.Job
+		var createdAt, updatedAt sql.NullString
+		var companyID, companyName, companySiteURL, companyCareersURL, companyATSType, companyATSUrl sql.NullString
+		var companyScrapedAt, companyCreatedAt, companyUpdatedAt sql.NullString
+
+		err := rows.Scan(
+			&j.ID,
+			&j.Title,
+			&j.Description,
+			&j.Url,
+			&j.SalaryRange,
+			&j.PublishedAt,
+			&createdAt,
+			&updatedAt,
+			&companyID,
+			&companyName,
+			&companySiteURL,
+			&companyCareersURL,
+			&companyATSType,
+			&companyATSUrl,
+			&companyScrapedAt,
+			&companyCreatedAt,
+			&companyUpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("scanning job: %w", err)
+		}
+
+		if createdAt.Valid && createdAt.String != "" {
+			formats := []string{
+				"2006-01-02 15:04:05.000",
+				"2006-01-02 15:04:05",
+				time.RFC3339,
+			}
+			for _, format := range formats {
+				if t, err := time.Parse(format, createdAt.String); err == nil {
+					j.CreatedAt = t
+					break
+				}
+			}
+		}
+		if updatedAt.Valid && updatedAt.String != "" {
+			formats := []string{
+				"2006-01-02 15:04:05.000",
+				"2006-01-02 15:04:05",
+				time.RFC3339,
+			}
+			for _, format := range formats {
+				if t, err := time.Parse(format, updatedAt.String); err == nil {
+					j.UpdatedAt = t
+					break
+				}
+			}
+		}
+
+		if companyID.Valid && companyName.Valid {
+			j.Company = &scraping.Company{
+				ID:         companyID.String,
+				Name:       companyName.String,
+				SiteURL:    companySiteURL.String,
+				CareersURL: companyCareersURL.String,
+				ATSType:    companyATSType.String,
+				ATSUrl:     companyATSUrl.String,
+				ScrapedAt:  companyScrapedAt.String,
+				CreatedAt:  companyCreatedAt.String,
+				UpdatedAt:  companyUpdatedAt.String,
+			}
+		}
+
+		jobs = append(jobs, j)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterating jobs: %w", err)
+	}
+
+	return jobs, nil
 }
