@@ -10,7 +10,7 @@ help:
 	@echo "  templ-generate - Generate Go code from templ templates"
 
 scrape:
-	@go build -o bin/scraper .
+	@go build -o bin/scraper ./cmd/scraper
 
 server: templ-generate
 	@CGO_ENABLED=0 GOOS=linux go build -o bin/server ./cmd/server
