@@ -3,18 +3,27 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"log"
 	"os"
 
 	"github.com/ddahon/workfromearth/internal/scraping"
 	"github.com/ddahon/workfromearth/internal/storage"
+	"github.com/spf13/viper"
 )
 
 func main() {
+	if len(os.Args) < 2 {
+		log.Fatal("Please specify the config file path in the arguments")
+	}
+	getConfig(os.Args[1])
+
 	urlFlag := flag.String("url", "", "URL to scrape (searches in database by careers_url or ats_url)")
 	flag.Parse()
 
-	db, err := storage.NewDB("./db.sqlite")
+	dbPath := viper.GetString("dbPath")
+
+	db, err := storage.NewDB(dbPath)
 	if err != nil {
 		log.Fatalf("opening db %v: ", err)
 	}
@@ -85,6 +94,17 @@ func main() {
 
 		if err := repo.UpdateScrapedAt(company.ID); err != nil {
 			log.Printf("updating scraped_at for %s: %v\n", company.Name, err)
+		}
+	}
+}
+
+func getConfig(path string) {
+	viper.SetConfigFile(path)
+	if err := viper.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			panic(fmt.Errorf("config file not found in %v: %w", path, err))
+		} else {
+			panic(fmt.Errorf("error while reading config file: %w", err))
 		}
 	}
 }

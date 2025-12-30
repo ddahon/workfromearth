@@ -5,26 +5,12 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strings"
 
 	"github.com/ddahon/workfromearth/cmd/server/views"
 	"github.com/ddahon/workfromearth/internal/scraping"
 	"github.com/ddahon/workfromearth/internal/storage"
 	"github.com/spf13/viper"
 )
-
-func redirect(w http.ResponseWriter, req *http.Request) {
-	// remove/add not default ports from req.Host
-	host := strings.Split(req.Host, ":")[0]
-	target := "https://" + host + req.URL.Path
-	if len(req.URL.RawQuery) > 0 {
-		target += "?" + req.URL.RawQuery
-	}
-	log.Printf("redirect to: %s", target)
-	http.Redirect(w, req, target,
-		// see comments below and consider the codes 308, 302, or 301
-		http.StatusTemporaryRedirect)
-}
 
 func main() {
 	if len(os.Args) < 2 {
@@ -34,7 +20,6 @@ func main() {
 
 	dbPath := viper.GetString("dbPath")
 	port := viper.GetString("port")
-	sslEnabled := viper.GetBool("sslEnabled")
 
 	db, err := storage.NewDB(dbPath)
 	if err != nil {
@@ -66,14 +51,7 @@ func main() {
 		}
 	})
 
-	if sslEnabled {
-		certFile := viper.GetString("sslCertFile")
-		keyFile := viper.GetString("sslKeyFile")
-		go http.ListenAndServe(":8080", http.HandlerFunc(redirect))
-		log.Fatal(http.ListenAndServeTLS(":"+port, certFile, keyFile, nil))
-	} else {
-		log.Fatal(http.ListenAndServe(":"+port, nil))
-	}
+	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
 
 func getConfig(path string) {

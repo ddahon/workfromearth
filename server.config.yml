@@ -1,6 +1,3 @@
 dbPath: ./db.sqlite
 port: 8080
-sslEnabled: false
-sslCertFile: path/to/cert/file
-sslKeyFile: path/to/key/file
 
