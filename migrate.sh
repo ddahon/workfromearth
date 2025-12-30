@@ -2,13 +2,28 @@
 
 # Migration script for SQLite database
 # Usage: ./migrate.sh [database_path]
-# Example: ./migrate.sh ./jobs.sqlite
+# Example: ./migrate.sh /opt/workfromearth/data/db.sqlite
 
 set -e
 
-# Default database path
-DB_PATH="${1:-./db.sqlite}"
-MIGRATIONS_DIR="./database/migrations"
+if [ $# -eq 0 ]; then
+    echo "Usage: $0 <database_path>"
+    echo "Example: $0 /opt/workfromearth/data/db.sqlite"
+    exit 1
+fi
+
+DB_PATH="$1"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [[ "$SCRIPT_DIR" == "/opt/workfromearth" ]]; then
+    MIGRATIONS_DIR="/opt/workfromearth/data/migrations"
+else
+    MIGRATIONS_DIR="$SCRIPT_DIR/../database/migrations"
+    if [ ! -d "$MIGRATIONS_DIR" ]; then
+        MIGRATIONS_DIR="./database/migrations"
+    fi
+fi
 
 # Check if sqlite3 is installed
 if ! command -v sqlite3 &> /dev/null; then
@@ -25,7 +40,7 @@ fi
 echo "Running migrations on database: $DB_PATH"
 
 # Get all migration files sorted by name
-MIGRATIONS=$(find "$MIGRATIONS_DIR" -name "*.sql" | sort)
+MIGRATIONS=$(find "$MIGRATIONS_DIR" -maxdepth 1 -name "*.sql" -type f 2>/dev/null | sort)
 
 if [ -z "$MIGRATIONS" ]; then
     echo "No migration files found in $MIGRATIONS_DIR"

@@ -4,12 +4,12 @@ SHELL = /bin/bash
 
 help:
 	@echo "Available targets:"
-	@echo "  scrape         - Build the scraper binary"
+	@echo "  scraper         - Build the scraper binary"
 	@echo "  server         - Generate templ files and build the server binary"
 	@echo "  server-watch   - Watch for templ changes and run server with hot reload"
 	@echo "  templ-generate - Generate Go code from templ templates"
 
-scrape:
+scraper:
 	@go build -o bin/scraper ./cmd/scraper
 
 server: templ-generate
