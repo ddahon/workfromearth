@@ -58,7 +58,7 @@ else
     TEMP_PATH="/tmp/${TARGET}_$$"
     scp "$BINARY_PATH" "$SSH_CONNECTION:$TEMP_PATH"
     
-    ssh "$SSH_CONNECTION" "sudo mv $TEMP_PATH $DEPLOY_PATH/$TARGET && sudo chmod 755 $DEPLOY_PATH/$TARGET && sudo chown wfe:wfe $DEPLOY_PATH/$TARGET"
+    ssh "$SSH_CONNECTION" "sudo mv $TEMP_PATH $DEPLOY_PATH/$TARGET && sudo chmod 755 $DEPLOY_PATH/$TARGET && sudo chown wfe:wfe $DEPLOY_PATH/$TARGET && sudo systemctl restart wfe-server.service"
     
     echo "Deployment complete! Binary deployed to $DEPLOY_PATH/$TARGET"
 fi
