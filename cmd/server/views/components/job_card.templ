@@ -3,14 +3,14 @@ package components
 import "github.com/ddahon/workfromearth/internal/scraping"
 
 templ JobCard(job scraping.Job) {
-	<a href={ templ.URL(job.Url) } target="_blank" rel="noopener noreferrer" class="block h-full p-4 sm:p-6 border border-gray-200 rounded-lg shadow hover:bg-indigo-700 bg-gray-800">
-		<h5 class="mb-2 text-lg sm:text-xl font-bold tracking-tight text-white truncate" title={ job.Title }>{ job.Title }</h5>
+	<a href={ templ.URL(job.Url) } target="_blank" rel="noopener noreferrer" class="block h-full p-6 border border-gray-200 rounded-lg shadow hover:bg-indigo-700 bg-gray-800">
+		<h5 class="mb-3 text-l lg:text-xl font-bold tracking-tight text-white truncate" title={ job.Title }>{ job.Title }</h5>
 		<div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
 			if job.Company != nil {
-				<p class="font-normal text-gray-400">{ job.Company.Name }</p>
+				<p class="font-normal text-base text-gray-400">{ job.Company.Name }</p>
 			}
 			if job.PublishedAt != "" {
-				<p class="text-sm text-gray-500">{ FormatRelativeDate(job.PublishedAt) }</p>
+				<p class="text-base sm:text-sm text-gray-500">{ FormatRelativeDate(job.PublishedAt) }</p>
 			}
 		</div>
 	</a>
