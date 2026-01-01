@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/ddahon/workfromearth/internal/scraping"
 	"github.com/ddahon/workfromearth/internal/storage"
@@ -19,6 +20,7 @@ func main() {
 	getConfig(os.Args[1])
 
 	urlFlag := flag.String("url", "", "URL to scrape (searches in database by careers_url or ats_url)")
+	lastScrapedFlag := flag.Int("last_scraped", 6, "Minimum number of hours since last scrape to rescrape a company (0 = always scrape)")
 	flag.Parse()
 
 	dbPath := viper.GetString("dbPath")
@@ -71,9 +73,50 @@ func main() {
 		log.Fatalf("getting companies: %v", err)
 	}
 
-	log.Printf("Found %d companies\n", len(companies))
+	var companiesToScrape []scraping.Company
+	now := time.Now()
+	minHoursSinceScrape := time.Duration(*lastScrapedFlag) * time.Hour
 
 	for _, company := range companies {
+		shouldScrape := false
+
+		if company.ScrapedAt == "" {
+			shouldScrape = true
+		} else {
+			// Parse scraped_at timestamp
+			formats := []string{
+				"2006-01-02 15:04:05.000",
+				"2006-01-02 15:04:05",
+				time.RFC3339,
+			}
+			var scrapedAt time.Time
+			parsed := false
+			for _, format := range formats {
+				if t, err := time.Parse(format, company.ScrapedAt); err == nil {
+					scrapedAt = t
+					parsed = true
+					break
+				}
+			}
+
+			if !parsed {
+				shouldScrape = true
+			} else {
+				hoursSinceScrape := now.Sub(scrapedAt)
+				if hoursSinceScrape >= minHoursSinceScrape {
+					shouldScrape = true
+				}
+			}
+		}
+
+		if shouldScrape {
+			companiesToScrape = append(companiesToScrape, company)
+		}
+	}
+
+	log.Printf("Found %d companies, %d need scraping\n", len(companies), len(companiesToScrape))
+
+	for _, company := range companiesToScrape {
 		scraper, err := scraping.CompanyToScraper(company)
 		if err != nil {
 			log.Printf("creating scraper for %s: %v\n", company.Name, err)
