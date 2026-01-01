@@ -44,14 +44,14 @@ templ HomeBanner() {
 
 templ JobResults(jobs []scraping.Job, searchQuery string) {
 	<div class="overflow-x-auto px-4 sm:px-8 md:px-16 lg:px-32 xl:px-48 py-6 bg-gray-900 flex flex-col" id="jobs" x-data="{ isListView: false }" x-bind:class="{'lg:flex-wrap lg:justify-center lg:flex-row': !isListView, 'lg:flex-col': isListView}">
-		<div class="flex flex-col sm:flex-row justify-between w-full mb-4 items-center gap-4">
-			<form method="GET" action="/#jobs" class="flex items-center gap-2 w-full sm:w-auto">
+		<div class="flex flex-col w-full mb-4 items-center gap-4">
+			<form method="GET" action="/#jobs" class="flex items-center gap-2 w-full">
 				<input
 					type="text"
 					name="q"
 					value={ searchQuery }
 					placeholder="Search job titles..."
-					class="px-4 py-2 bg-gray-800 text-white border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent flex-1 sm:flex-none"
+					class="px-4 py-2 bg-gray-800 text-white border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent flex-1"
 				/>
 				<button
 					type="submit"
@@ -60,7 +60,7 @@ templ JobResults(jobs []scraping.Job, searchQuery string) {
 					<i class="fa-solid fa-search"></i>
 				</button>
 			</form>
-			<div class="hidden lg:flex items-center">
+			<div class="hidden lg:flex items-center w-full justify-end">
 				<i class="fa-solid fa-table-cells text-gray-400 mr-2"></i>
 				<label
 					for="listViewTrigger"
