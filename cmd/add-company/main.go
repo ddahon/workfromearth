@@ -16,6 +16,7 @@ func main() {
 	careersURLFlag := flag.String("careersurl", "", "Company careers page URL")
 	atsTypeFlag := flag.String("atstype", "", "ATS type (e.g., greenhouse, ashby, recruitee)")
 	atsURLFlag := flag.String("atsurl", "", "ATS URL (required if atstype is provided)")
+	slugFlag := flag.String("slug", "", "Company slug for auto-filling careersUrl and atsUrl")
 	dbPathFlag := flag.String("db", "./db.sqlite", "Path to database file")
 
 	flag.Usage = func() {
@@ -33,8 +34,35 @@ func main() {
 	if *siteURLFlag == "" {
 		log.Fatal("Error: -siteurl is required")
 	}
-	if *atsTypeFlag != "" && *atsURLFlag == "" {
-		log.Fatal("Error: -atsurl is required when -atstype is provided")
+
+	careersURL := *careersURLFlag
+	atsURL := *atsURLFlag
+
+	if *slugFlag != "" {
+		if *atsTypeFlag == "" {
+			log.Fatal("Error: -atstype is required when -slug is provided")
+		}
+
+		switch *atsTypeFlag {
+		case "ashby":
+			if careersURL == "" {
+				careersURL = fmt.Sprintf("https://jobs.ashbyhq.com/%s", *slugFlag)
+			}
+			if atsURL == "" {
+				atsURL = fmt.Sprintf("https://api.ashbyhq.com/posting-api/job-board/%s?includeCompensation=true", *slugFlag)
+			}
+		case "greenhouse":
+			if careersURL == "" {
+				careersURL = fmt.Sprintf("https://job-boards.greenhouse.io/%s", *slugFlag)
+			}
+			if atsURL == "" {
+				atsURL = fmt.Sprintf("https://boards-api.greenhouse.io/v1/boards/%s/jobs?content=true", *slugFlag)
+			}
+		}
+	}
+
+	if *atsTypeFlag != "" && atsURL == "" {
+		log.Fatal("Error: -atsurl is required when -atstype is provided (or use -slug to auto-fill)")
 	}
 
 	db, err := storage.NewDB(*dbPathFlag)
@@ -48,9 +76,9 @@ func main() {
 	company := scraping.Company{
 		Name:       *nameFlag,
 		SiteURL:    *siteURLFlag,
-		CareersURL: *careersURLFlag,
+		CareersURL: careersURL,
 		ATSType:    *atsTypeFlag,
-		ATSUrl:     *atsURLFlag,
+		ATSUrl:     atsURL,
 	}
 
 	id, err := repo.SaveCompany(company)
