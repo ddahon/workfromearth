@@ -38,6 +38,9 @@ func (s AshbyScraper) Scrape() ([]Job, error) {
 
 	jobs := make([]Job, 0, len(ashbyResp.Jobs))
 	for _, ashbyJob := range ashbyResp.Jobs {
+		if !ashbyJob.IsRemote {
+			continue
+		}
 		salaryRange := ""
 		if ashbyJob.Compensation != nil {
 			salaryRange = ashbyJob.Compensation.ScrapeableCompensationSalarySummary

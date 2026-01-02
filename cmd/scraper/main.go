@@ -21,7 +21,7 @@ func main() {
 
 	urlFlag := flag.String("url", "", "URL to scrape (searches in database by careers_url or ats_url)")
 	lastScrapedFlag := flag.Int("last_scraped", 6, "Minimum number of hours since last scrape to rescrape a company (0 = always scrape)")
-	flag.Parse()
+	flag.CommandLine.Parse(os.Args[2:])
 
 	dbPath := viper.GetString("dbPath")
 
@@ -117,6 +117,11 @@ func main() {
 	log.Printf("Found %d companies, %d need scraping\n", len(companies), len(companiesToScrape))
 
 	for _, company := range companiesToScrape {
+		if company.ATSType == "custom" {
+			log.Printf("skipping %s: did not find any scraper for custom ATS", company.Name)
+			continue
+		}
+
 		scraper, err := scraping.CompanyToScraper(company)
 		if err != nil {
 			log.Printf("creating scraper for %s: %v\n", company.Name, err)
