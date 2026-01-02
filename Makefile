@@ -1,6 +1,6 @@
 SHELL = /bin/bash
 
-.PHONY: scrape server server-watch templ-generate help
+.PHONY: scraper server server-watch templ-generate help
 
 help:
 	@echo "Available targets:"

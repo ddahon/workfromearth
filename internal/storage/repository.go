@@ -97,20 +97,29 @@ func (r *Repository) GetCompanies() ([]scraping.Company, error) {
 	var companies []scraping.Company
 	for rows.Next() {
 		var c scraping.Company
+		var siteURL, careersURL, atsType, atsURL, scrapedAt sql.NullString
+
 		err := rows.Scan(
 			&c.ID,
 			&c.Name,
-			&c.SiteURL,
-			&c.CareersURL,
-			&c.ATSType,
-			&c.ATSUrl,
-			&c.ScrapedAt,
+			&siteURL,
+			&careersURL,
+			&atsType,
+			&atsURL,
+			&scrapedAt,
 			&c.CreatedAt,
 			&c.UpdatedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scanning company: %w", err)
 		}
+
+		c.SiteURL = siteURL.String
+		c.CareersURL = careersURL.String
+		c.ATSType = atsType.String
+		c.ATSUrl = atsURL.String
+		c.ScrapedAt = scrapedAt.String
+
 		companies = append(companies, c)
 	}
 
@@ -193,14 +202,16 @@ func (r *Repository) GetCompanyByURL(url string) (*scraping.Company, error) {
 	row := r.db.QueryRow(query, url)
 
 	var c scraping.Company
+	var siteURL, careersURL, atsType, atsURL, scrapedAt sql.NullString
+
 	err := row.Scan(
 		&c.ID,
 		&c.Name,
-		&c.SiteURL,
-		&c.CareersURL,
-		&c.ATSType,
-		&c.ATSUrl,
-		&c.ScrapedAt,
+		&siteURL,
+		&careersURL,
+		&atsType,
+		&atsURL,
+		&scrapedAt,
 		&c.CreatedAt,
 		&c.UpdatedAt,
 	)
@@ -210,6 +221,12 @@ func (r *Repository) GetCompanyByURL(url string) (*scraping.Company, error) {
 		}
 		return nil, fmt.Errorf("scanning company: %w", err)
 	}
+
+	c.SiteURL = siteURL.String
+	c.CareersURL = careersURL.String
+	c.ATSType = atsType.String
+	c.ATSUrl = atsURL.String
+	c.ScrapedAt = scrapedAt.String
 
 	return &c, nil
 }
