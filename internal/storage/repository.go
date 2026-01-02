@@ -18,7 +18,7 @@ func NewRepository(db *DB) *Repository {
 	return &Repository{db: db}
 }
 
-func (r *Repository) SaveJob(job scraping.Job, companyID string) error {
+func (r *Repository) SaveJob(job scraping.Job, companyID int64) error {
 	query := `
 		INSERT INTO jobs (id, title, company, company_id, description, job_url, salary_range, published_at, updated_at)
 		VALUES ($1, $2, (SELECT name FROM companies WHERE id = $3), $3, $4, $5, $6, $7, datetime('now'))
@@ -49,7 +49,7 @@ func (r *Repository) SaveJob(job scraping.Job, companyID string) error {
 	return nil
 }
 
-func (r *Repository) SaveJobs(jobs []scraping.Job, companyID string) error {
+func (r *Repository) SaveJobs(jobs []scraping.Job, companyID int64) error {
 	tx, err := r.db.Begin()
 	if err != nil {
 		return fmt.Errorf("starting transaction: %w", err)
@@ -121,42 +121,65 @@ func (r *Repository) GetCompanies() ([]scraping.Company, error) {
 	return companies, nil
 }
 
-func (r *Repository) SaveCompany(company scraping.Company) error {
-	if company.ID == "" {
-		company.ID = uuid.New().String()
+func (r *Repository) SaveCompany(company scraping.Company) (int64, error) {
+	var query string
+	var result sql.Result
+	var err error
+
+	if company.ID == 0 {
+		// Insert new company - let SQLite auto-generate the ID
+		query = `
+			INSERT INTO companies (name, site_url, careers_url, ats_type, ats_url, scraped_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, datetime('now'))
+		`
+		result, err = r.db.Exec(
+			query,
+			company.Name,
+			company.SiteURL,
+			company.CareersURL,
+			company.ATSType,
+			company.ATSUrl,
+			company.ScrapedAt,
+		)
+		if err != nil {
+			return 0, fmt.Errorf("saving company: %w", err)
+		}
+		id, err := result.LastInsertId()
+		if err != nil {
+			return 0, fmt.Errorf("getting last insert id: %w", err)
+		}
+		return id, nil
+	} else {
+		// Update existing company
+		query = `
+			UPDATE companies SET
+				name = $1,
+				site_url = $2,
+				careers_url = $3,
+				ats_type = $4,
+				ats_url = $5,
+				scraped_at = $6,
+				updated_at = datetime('now')
+			WHERE id = $7
+		`
+		_, err = r.db.Exec(
+			query,
+			company.Name,
+			company.SiteURL,
+			company.CareersURL,
+			company.ATSType,
+			company.ATSUrl,
+			company.ScrapedAt,
+			company.ID,
+		)
+		if err != nil {
+			return 0, fmt.Errorf("updating company: %w", err)
+		}
+		return company.ID, nil
 	}
-
-	query := `
-		INSERT INTO companies (id, name, site_url, careers_url, ats_type, ats_url, scraped_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, datetime('now'))
-		ON CONFLICT (id) DO UPDATE SET
-			name = EXCLUDED.name,
-			site_url = EXCLUDED.site_url,
-			careers_url = EXCLUDED.careers_url,
-			ats_type = EXCLUDED.ats_type,
-			ats_url = EXCLUDED.ats_url,
-			scraped_at = EXCLUDED.scraped_at,
-			updated_at = datetime('now')
-	`
-
-	_, err := r.db.Exec(
-		query,
-		company.ID,
-		company.Name,
-		company.SiteURL,
-		company.CareersURL,
-		company.ATSType,
-		company.ATSUrl,
-		company.ScrapedAt,
-	)
-	if err != nil {
-		return fmt.Errorf("saving company: %w", err)
-	}
-
-	return nil
 }
 
-func (r *Repository) UpdateScrapedAt(companyID string) error {
+func (r *Repository) UpdateScrapedAt(companyID int64) error {
 	query := `UPDATE companies SET scraped_at = datetime('now'), updated_at = datetime('now') WHERE id = $1`
 	_, err := r.db.Exec(query, companyID)
 	if err != nil {
@@ -225,7 +248,8 @@ func (r *Repository) GetAllJobs() ([]scraping.Job, error) {
 	for rows.Next() {
 		var j scraping.Job
 		var createdAt, updatedAt sql.NullString
-		var companyID, companyName, companySiteURL, companyCareersURL, companyATSType, companyATSUrl sql.NullString
+		var companyID sql.NullInt64
+		var companyName, companySiteURL, companyCareersURL, companyATSType, companyATSUrl sql.NullString
 		var companyScrapedAt, companyCreatedAt, companyUpdatedAt sql.NullString
 
 		err := rows.Scan(
@@ -280,7 +304,7 @@ func (r *Repository) GetAllJobs() ([]scraping.Job, error) {
 
 		if companyID.Valid && companyName.Valid {
 			j.Company = &scraping.Company{
-				ID:         companyID.String,
+				ID:         companyID.Int64,
 				Name:       companyName.String,
 				SiteURL:    companySiteURL.String,
 				CareersURL: companyCareersURL.String,
@@ -345,7 +369,8 @@ func (r *Repository) SearchJobsByTitle(query string) ([]scraping.Job, error) {
 	for rows.Next() {
 		var j scraping.Job
 		var createdAt, updatedAt sql.NullString
-		var companyID, companyName, companySiteURL, companyCareersURL, companyATSType, companyATSUrl sql.NullString
+		var companyID sql.NullInt64
+		var companyName, companySiteURL, companyCareersURL, companyATSType, companyATSUrl sql.NullString
 		var companyScrapedAt, companyCreatedAt, companyUpdatedAt sql.NullString
 
 		err := rows.Scan(
@@ -400,7 +425,7 @@ func (r *Repository) SearchJobsByTitle(query string) ([]scraping.Job, error) {
 
 		if companyID.Valid && companyName.Valid {
 			j.Company = &scraping.Company{
-				ID:         companyID.String,
+				ID:         companyID.Int64,
 				Name:       companyName.String,
 				SiteURL:    companySiteURL.String,
 				CareersURL: companyCareersURL.String,

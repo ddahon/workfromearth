@@ -1,7 +1,7 @@
 package scraping
 
 type Company struct {
-	ID         string
+	ID         int64
 	Name       string
 	SiteURL    string
 	CareersURL string

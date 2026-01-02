@@ -53,9 +53,10 @@ func main() {
 		ATSUrl:     *atsURLFlag,
 	}
 
-	if err := repo.SaveCompany(company); err != nil {
+	id, err := repo.SaveCompany(company)
+	if err != nil {
 		log.Fatalf("Error saving company: %v", err)
 	}
 
-	fmt.Printf("Successfully created company: %s (ID: %s)\n", company.Name, company.ID)
+	fmt.Printf("Successfully created company: %s (ID: %d)\n", company.Name, id)
 }
