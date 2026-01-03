@@ -1,4 +1,0 @@
-wfe:
-  hosts:
-    server:
-      ansible_host: 65.108.213.122
