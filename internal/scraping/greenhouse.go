@@ -1,3 +1,4 @@
+// https://developers.greenhouse.io/job-board.html#list-jobs
 package scraping
 
 type GreenhouseScraper struct {
@@ -36,12 +37,17 @@ func (s GreenhouseScraper) Scrape() ([]Job, error) {
 
 	jobs := make([]Job, 0, len(greenhouseResp.Jobs))
 	for _, greenhouseJob := range greenhouseResp.Jobs {
+		location := ""
+		if greenhouseJob.Location != nil {
+			location = greenhouseJob.Location.Name
+		}
 		job := Job{
 			Title:       greenhouseJob.Title,
 			Url:         greenhouseJob.AbsoluteURL,
 			Description: greenhouseJob.Content,
 			PublishedAt: greenhouseJob.UpdatedAt,
 			SalaryRange: "",
+			Location:    location,
 		}
 		jobs = append(jobs, job)
 	}

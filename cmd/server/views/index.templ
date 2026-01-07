@@ -8,7 +8,6 @@ templ Index(jobs []scraping.Job, searchQuery string) {
 		<head>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			<script src="https://cdn.tailwindcss.com"></script>
-			<script src="//unpkg.com/alpinejs" defer></script>
 			<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css"/>
 		</head>
 		<body>
@@ -43,7 +42,7 @@ templ HomeBanner() {
 }
 
 templ JobResults(jobs []scraping.Job, searchQuery string) {
-	<div class="overflow-x-auto px-4 sm:px-8 md:px-16 lg:px-32 xl:px-48 py-6 bg-gray-900 flex flex-col" id="jobs" x-data="{ isListView: false }" x-bind:class="{'lg:flex-wrap lg:justify-center lg:flex-row': !isListView, 'lg:flex-col': isListView}">
+	<div class="overflow-x-auto px-4 sm:px-8 md:px-16 lg:px-32 xl:px-48 py-6 bg-gray-900 flex flex-col lg:flex-col" id="jobs">
 		<div class="flex flex-col w-full mb-4 items-center gap-4">
 			<form method="GET" action="/#jobs" class="flex items-center gap-2 w-full">
 				<input
@@ -60,23 +59,9 @@ templ JobResults(jobs []scraping.Job, searchQuery string) {
 					<i class="fa-solid fa-search"></i>
 				</button>
 			</form>
-			<div class="hidden lg:flex items-center w-full justify-end">
-				<i class="fa-solid fa-table-cells text-gray-400 mr-2"></i>
-				<label
-					for="listViewTrigger"
-					class="relative h-8 w-14 cursor-pointer rounded-full transition [-webkit-tap-highlight-color:_transparent] bg-indigo-600"
-				>
-					<input x-model="isListView" type="checkbox" id="listViewTrigger" class="sr-only"/>
-					<span
-						:class="{ 'start-0': !isListView, 'start-6': isListView }"
-						class="absolute inset-y-0 m-1 size-6 rounded-full bg-white transition-all"
-					></span>
-				</label>
-				<i class="fa-solid fa-list text-gray-400 ml-2"></i>
-			</div>
 		</div>
 		for _, job := range jobs {
-			<div x-bind:class="{'w-full lg:w-1/2 xl:w-1/3 p-2': !isListView, 'w-full p-2': isListView}">
+			<div class="w-full p-2">
 				<div class="min-h-35 sm:min-h-25 rounded-lg">
 					@components.JobCard(job)
 				</div>

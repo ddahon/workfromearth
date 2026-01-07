@@ -8,6 +8,7 @@ type Job struct {
 	Description string
 	Title       string
 	SalaryRange string
+	Location    string
 	PublishedAt string
 	Company     *Company
 	CreatedAt   time.Time

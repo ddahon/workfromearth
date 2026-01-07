@@ -50,6 +50,7 @@ func (s AshbyScraper) Scrape() ([]Job, error) {
 			Url:         ashbyJob.JobURL,
 			Description: ashbyJob.Description,
 			SalaryRange: salaryRange,
+			Location:    ashbyJob.Location,
 			PublishedAt: ashbyJob.PublishedAt,
 		}
 		jobs = append(jobs, job)

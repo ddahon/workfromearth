@@ -20,12 +20,13 @@ func NewRepository(db *DB) *Repository {
 
 func (r *Repository) SaveJob(job scraping.Job, companyID int64) error {
 	query := `
-		INSERT INTO jobs (id, title, company, company_id, description, job_url, salary_range, published_at, updated_at)
-		VALUES ($1, $2, (SELECT name FROM companies WHERE id = $3), $3, $4, $5, $6, $7, datetime('now'))
+		INSERT INTO jobs (id, title, company, company_id, description, job_url, salary_range, location, published_at, updated_at)
+		VALUES ($1, $2, (SELECT name FROM companies WHERE id = $3), $3, $4, $5, $6, $7, $8, datetime('now'))
 		ON CONFLICT (job_url) DO UPDATE SET
 			title = EXCLUDED.title,
 			description = EXCLUDED.description,
 			salary_range = EXCLUDED.salary_range,
+			location = EXCLUDED.location,
 			published_at = EXCLUDED.published_at,
 			company_id = EXCLUDED.company_id,
 			updated_at = datetime('now')
@@ -40,6 +41,7 @@ func (r *Repository) SaveJob(job scraping.Job, companyID int64) error {
 		job.Description,
 		job.Url,
 		job.SalaryRange,
+		job.Location,
 		job.PublishedAt,
 	)
 	if err != nil {
@@ -57,12 +59,13 @@ func (r *Repository) SaveJobs(jobs []scraping.Job, companyID int64) error {
 	defer tx.Rollback()
 
 	stmt, err := tx.Prepare(`
-		INSERT INTO jobs (id, title, company, company_id, description, job_url, salary_range, published_at, updated_at)
-		VALUES ($1, $2, (SELECT name FROM companies WHERE id = $3), $3, $4, $5, $6, $7, datetime('now'))
+		INSERT INTO jobs (id, title, company, company_id, description, job_url, salary_range, location, published_at, updated_at)
+		VALUES ($1, $2, (SELECT name FROM companies WHERE id = $3), $3, $4, $5, $6, $7, $8, datetime('now'))
 		ON CONFLICT (job_url) DO UPDATE SET
 			title = EXCLUDED.title,
 			description = EXCLUDED.description,
 			salary_range = EXCLUDED.salary_range,
+			location = EXCLUDED.location,
 			published_at = EXCLUDED.published_at,
 			company_id = EXCLUDED.company_id,
 			updated_at = datetime('now')
@@ -74,7 +77,7 @@ func (r *Repository) SaveJobs(jobs []scraping.Job, companyID int64) error {
 
 	for _, job := range jobs {
 		id := uuid.New().String()
-		if _, err := stmt.Exec(id, job.Title, companyID, job.Description, job.Url, job.SalaryRange, job.PublishedAt); err != nil {
+		if _, err := stmt.Exec(id, job.Title, companyID, job.Description, job.Url, job.SalaryRange, job.Location, job.PublishedAt); err != nil {
 			return fmt.Errorf("executing statement: %w", err)
 		}
 	}
@@ -239,6 +242,7 @@ func (r *Repository) GetAllJobs() ([]scraping.Job, error) {
 			j.description, 
 			j.job_url, 
 			j.salary_range,
+			j.location,
 			j.published_at,
 			j.created_at, 
 			j.updated_at,
@@ -268,6 +272,7 @@ func (r *Repository) GetAllJobs() ([]scraping.Job, error) {
 		var companyID sql.NullInt64
 		var companyName, companySiteURL, companyCareersURL, companyATSType, companyATSUrl sql.NullString
 		var companyScrapedAt, companyCreatedAt, companyUpdatedAt sql.NullString
+		var location sql.NullString
 
 		err := rows.Scan(
 			&j.ID,
@@ -275,6 +280,7 @@ func (r *Repository) GetAllJobs() ([]scraping.Job, error) {
 			&j.Description,
 			&j.Url,
 			&j.SalaryRange,
+			&location,
 			&j.PublishedAt,
 			&createdAt,
 			&updatedAt,
@@ -290,6 +296,10 @@ func (r *Repository) GetAllJobs() ([]scraping.Job, error) {
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scanning job: %w", err)
+		}
+
+		if location.Valid {
+			j.Location = location.String
 		}
 
 		if createdAt.Valid && createdAt.String != "" {
@@ -351,6 +361,7 @@ func (r *Repository) SearchJobsByTitle(query string) ([]scraping.Job, error) {
 			j.description, 
 			j.job_url, 
 			j.salary_range,
+			j.location,
 			j.published_at,
 			j.created_at, 
 			j.updated_at,
@@ -389,6 +400,7 @@ func (r *Repository) SearchJobsByTitle(query string) ([]scraping.Job, error) {
 		var companyID sql.NullInt64
 		var companyName, companySiteURL, companyCareersURL, companyATSType, companyATSUrl sql.NullString
 		var companyScrapedAt, companyCreatedAt, companyUpdatedAt sql.NullString
+		var location sql.NullString
 
 		err := rows.Scan(
 			&j.ID,
@@ -396,6 +408,7 @@ func (r *Repository) SearchJobsByTitle(query string) ([]scraping.Job, error) {
 			&j.Description,
 			&j.Url,
 			&j.SalaryRange,
+			&location,
 			&j.PublishedAt,
 			&createdAt,
 			&updatedAt,
@@ -411,6 +424,10 @@ func (r *Repository) SearchJobsByTitle(query string) ([]scraping.Job, error) {
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scanning job: %w", err)
+		}
+
+		if location.Valid {
+			j.Location = location.String
 		}
 
 		if createdAt.Valid && createdAt.String != "" {
