@@ -42,7 +42,7 @@ templ HomeBanner() {
 }
 
 templ JobResults(jobs []scraping.Job, searchQuery string) {
-	<div class="overflow-x-auto px-4 sm:px-8 md:px-16 lg:px-32 xl:px-48 py-6 bg-gray-900 flex flex-col lg:flex-col" id="jobs">
+	<div class="overflow-x-auto px-8 sm:px-16 md:px-32 lg:px-64 py-6 bg-gray-900 flex flex-col lg:flex-col" id="jobs">
 		<div class="flex flex-col w-full mb-4 items-center gap-4">
 			<form method="GET" action="/#jobs" class="flex items-center gap-2 w-full">
 				<input
@@ -60,12 +60,10 @@ templ JobResults(jobs []scraping.Job, searchQuery string) {
 				</button>
 			</form>
 		</div>
-		for _, job := range jobs {
-			<div class="w-full p-2">
-				<div class="min-h-35 sm:min-h-25 rounded-lg">
-					@components.JobCard(job)
-				</div>
-			</div>
-		}
+		<div class="flex flex-col gap-2">
+			for _, job := range jobs {
+				@components.JobCard(job)
+			}
+		</div>
 	</div>
 }
