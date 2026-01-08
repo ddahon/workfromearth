@@ -22,7 +22,6 @@ func NewDB(dbPath string) (*DB, error) {
 	}
 
 	_, _ = db.Exec("PRAGMA foreign_keys = ON")
-	_, _ = db.Exec("PRAGMA journal_mode = WAL")
 
 	return &DB{db}, nil
 }
