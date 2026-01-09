@@ -18,37 +18,90 @@ func NewRepository(db *DB) *Repository {
 	return &Repository{db: db}
 }
 
-func (r *Repository) SaveJob(job scraping.Job, companyID int64) error {
-	query := `
-		INSERT INTO jobs (id, title, company, company_id, description, job_url, salary_range, location, published_at, updated_at)
-		VALUES ($1, $2, (SELECT name FROM companies WHERE id = $3), $3, $4, $5, $6, $7, $8, datetime('now'))
-		ON CONFLICT (job_url) DO UPDATE SET
-			title = EXCLUDED.title,
-			description = EXCLUDED.description,
-			salary_range = EXCLUDED.salary_range,
-			location = EXCLUDED.location,
-			published_at = EXCLUDED.published_at,
-			company_id = EXCLUDED.company_id,
-			updated_at = datetime('now')
-	`
+// scanJobRow scans a database row into a Job struct, handling nullable fields
+// Expects columns in this order:
+// j.id, j.title, j.description, j.job_url, j.salary_range, j.location, j.published_at,
+// j.created_at, j.updated_at, c.id, c.name, c.site_url, c.careers_url, c.ats_type,
+// c.ats_url, c.scraped_at, c.created_at, c.updated_at
+func scanJobRow(rows *sql.Rows) (*scraping.Job, error) {
+	var j scraping.Job
+	var createdAt, updatedAt sql.NullString
+	var companyID sql.NullInt64
+	var companyName, companySiteURL, companyCareersURL, companyATSType, companyATSUrl sql.NullString
+	var companyScrapedAt, companyCreatedAt, companyUpdatedAt sql.NullString
+	var location sql.NullString
 
-	id := uuid.New().String()
-	_, err := r.db.Exec(
-		query,
-		id,
-		job.Title,
-		companyID,
-		job.Description,
-		job.Url,
-		job.SalaryRange,
-		job.Location,
-		job.PublishedAt,
+	err := rows.Scan(
+		&j.ID,
+		&j.Title,
+		&j.Description,
+		&j.Url,
+		&j.SalaryRange,
+		&location,
+		&j.PublishedAt,
+		&createdAt,
+		&updatedAt,
+		&companyID,
+		&companyName,
+		&companySiteURL,
+		&companyCareersURL,
+		&companyATSType,
+		&companyATSUrl,
+		&companyScrapedAt,
+		&companyCreatedAt,
+		&companyUpdatedAt,
 	)
 	if err != nil {
-		return fmt.Errorf("saving job: %w", err)
+		return nil, err
 	}
 
-	return nil
+	if location.Valid {
+		j.Location = location.String
+	}
+
+	if createdAt.Valid && createdAt.String != "" {
+		formats := []string{
+			"2006-01-02 15:04:05.000",
+			"2006-01-02 15:04:05",
+			time.RFC3339,
+		}
+		for _, format := range formats {
+			if t, err := time.Parse(format, createdAt.String); err == nil {
+				j.CreatedAt = t
+				break
+			}
+		}
+	}
+
+	if updatedAt.Valid && updatedAt.String != "" {
+		formats := []string{
+			"2006-01-02 15:04:05.000",
+			"2006-01-02 15:04:05",
+			time.RFC3339,
+		}
+		for _, format := range formats {
+			if t, err := time.Parse(format, updatedAt.String); err == nil {
+				j.UpdatedAt = t
+				break
+			}
+		}
+	}
+
+	if companyID.Valid && companyName.Valid {
+		j.Company = &scraping.Company{
+			ID:         companyID.Int64,
+			Name:       companyName.String,
+			SiteURL:    companySiteURL.String,
+			CareersURL: companyCareersURL.String,
+			ATSType:    companyATSType.String,
+			ATSUrl:     companyATSUrl.String,
+			ScrapedAt:  companyScrapedAt.String,
+			CreatedAt:  companyCreatedAt.String,
+			UpdatedAt:  companyUpdatedAt.String,
+		}
+	}
+
+	return &j, nil
 }
 
 func (r *Repository) SaveJobs(jobs []scraping.Job, companyID int64) error {
@@ -66,7 +119,7 @@ func (r *Repository) SaveJobs(jobs []scraping.Job, companyID int64) error {
 			description = EXCLUDED.description,
 			salary_range = EXCLUDED.salary_range,
 			location = EXCLUDED.location,
-			published_at = EXCLUDED.published_at,
+			published_at = published_at,
 			company_id = EXCLUDED.company_id,
 			updated_at = datetime('now')
 	`)
@@ -267,83 +320,11 @@ func (r *Repository) GetAllJobs() ([]scraping.Job, error) {
 
 	var jobs []scraping.Job
 	for rows.Next() {
-		var j scraping.Job
-		var createdAt, updatedAt sql.NullString
-		var companyID sql.NullInt64
-		var companyName, companySiteURL, companyCareersURL, companyATSType, companyATSUrl sql.NullString
-		var companyScrapedAt, companyCreatedAt, companyUpdatedAt sql.NullString
-		var location sql.NullString
-
-		err := rows.Scan(
-			&j.ID,
-			&j.Title,
-			&j.Description,
-			&j.Url,
-			&j.SalaryRange,
-			&location,
-			&j.PublishedAt,
-			&createdAt,
-			&updatedAt,
-			&companyID,
-			&companyName,
-			&companySiteURL,
-			&companyCareersURL,
-			&companyATSType,
-			&companyATSUrl,
-			&companyScrapedAt,
-			&companyCreatedAt,
-			&companyUpdatedAt,
-		)
+		j, err := scanJobRow(rows)
 		if err != nil {
 			return nil, fmt.Errorf("scanning job: %w", err)
 		}
-
-		if location.Valid {
-			j.Location = location.String
-		}
-
-		if createdAt.Valid && createdAt.String != "" {
-			formats := []string{
-				"2006-01-02 15:04:05.000",
-				"2006-01-02 15:04:05",
-				time.RFC3339,
-			}
-			for _, format := range formats {
-				if t, err := time.Parse(format, createdAt.String); err == nil {
-					j.CreatedAt = t
-					break
-				}
-			}
-		}
-		if updatedAt.Valid && updatedAt.String != "" {
-			formats := []string{
-				"2006-01-02 15:04:05.000",
-				"2006-01-02 15:04:05",
-				time.RFC3339,
-			}
-			for _, format := range formats {
-				if t, err := time.Parse(format, updatedAt.String); err == nil {
-					j.UpdatedAt = t
-					break
-				}
-			}
-		}
-
-		if companyID.Valid && companyName.Valid {
-			j.Company = &scraping.Company{
-				ID:         companyID.Int64,
-				Name:       companyName.String,
-				SiteURL:    companySiteURL.String,
-				CareersURL: companyCareersURL.String,
-				ATSType:    companyATSType.String,
-				ATSUrl:     companyATSUrl.String,
-				ScrapedAt:  companyScrapedAt.String,
-				CreatedAt:  companyCreatedAt.String,
-				UpdatedAt:  companyUpdatedAt.String,
-			}
-		}
-
-		jobs = append(jobs, j)
+		jobs = append(jobs, *j)
 	}
 
 	if err := rows.Err(); err != nil {
@@ -395,83 +376,11 @@ func (r *Repository) SearchJobsByTitle(query string) ([]scraping.Job, error) {
 
 	var jobs []scraping.Job
 	for rows.Next() {
-		var j scraping.Job
-		var createdAt, updatedAt sql.NullString
-		var companyID sql.NullInt64
-		var companyName, companySiteURL, companyCareersURL, companyATSType, companyATSUrl sql.NullString
-		var companyScrapedAt, companyCreatedAt, companyUpdatedAt sql.NullString
-		var location sql.NullString
-
-		err := rows.Scan(
-			&j.ID,
-			&j.Title,
-			&j.Description,
-			&j.Url,
-			&j.SalaryRange,
-			&location,
-			&j.PublishedAt,
-			&createdAt,
-			&updatedAt,
-			&companyID,
-			&companyName,
-			&companySiteURL,
-			&companyCareersURL,
-			&companyATSType,
-			&companyATSUrl,
-			&companyScrapedAt,
-			&companyCreatedAt,
-			&companyUpdatedAt,
-		)
+		j, err := scanJobRow(rows)
 		if err != nil {
 			return nil, fmt.Errorf("scanning job: %w", err)
 		}
-
-		if location.Valid {
-			j.Location = location.String
-		}
-
-		if createdAt.Valid && createdAt.String != "" {
-			formats := []string{
-				"2006-01-02 15:04:05.000",
-				"2006-01-02 15:04:05",
-				time.RFC3339,
-			}
-			for _, format := range formats {
-				if t, err := time.Parse(format, createdAt.String); err == nil {
-					j.CreatedAt = t
-					break
-				}
-			}
-		}
-		if updatedAt.Valid && updatedAt.String != "" {
-			formats := []string{
-				"2006-01-02 15:04:05.000",
-				"2006-01-02 15:04:05",
-				time.RFC3339,
-			}
-			for _, format := range formats {
-				if t, err := time.Parse(format, updatedAt.String); err == nil {
-					j.UpdatedAt = t
-					break
-				}
-			}
-		}
-
-		if companyID.Valid && companyName.Valid {
-			j.Company = &scraping.Company{
-				ID:         companyID.Int64,
-				Name:       companyName.String,
-				SiteURL:    companySiteURL.String,
-				CareersURL: companyCareersURL.String,
-				ATSType:    companyATSType.String,
-				ATSUrl:     companyATSUrl.String,
-				ScrapedAt:  companyScrapedAt.String,
-				CreatedAt:  companyCreatedAt.String,
-				UpdatedAt:  companyUpdatedAt.String,
-			}
-		}
-
-		jobs = append(jobs, j)
+		jobs = append(jobs, *j)
 	}
 
 	if err := rows.Err(); err != nil {
