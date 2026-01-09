@@ -10,7 +10,7 @@ templ Index(jobs []scraping.Job, searchQuery string) {
 			<script src="https://cdn.tailwindcss.com"></script>
 			<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css"/>
 		</head>
-		<body>
+		<body class="bg-gray-900">
 			//@HomeBanner()
 			@JobResults(jobs, searchQuery)
 		</body>
@@ -42,7 +42,7 @@ templ HomeBanner() {
 }
 
 templ JobResults(jobs []scraping.Job, searchQuery string) {
-	<div class="overflow-x-auto px-8 sm:px-16 md:px-32 lg:px-64 py-6 bg-gray-900 flex flex-col lg:flex-col" id="jobs">
+	<div class="overflow-x-auto px-8 sm:px-16 md:px-32 lg:px-64 py-6 flex flex-col lg:flex-col" id="jobs">
 		<div class="flex flex-col w-full mb-4 items-center gap-4">
 			<form method="GET" action="/#jobs" class="flex items-center gap-2 w-full">
 				<input
